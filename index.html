@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>杆法 APP v7.0</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  .app-container { max-width: 430px; margin: 0 auto; background: #0d1117; min-height: 100vh; position: relative; overflow: hidden; }
+  .page { display: none; min-height: 100vh; padding-bottom: 80px; animation: fadeIn 0.3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Header */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13, 17, 23, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #30363d;
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-title { font-size: 17px; font-weight: 600; color: #f0f6fc; }
+  .header-sub { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .identity-badge {
+    background: linear-gradient(135deg, #238636, #2ea043);
+    color: #fff; font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+    box-shadow: 0 0 8px rgba(35, 134, 54, 0.3);
+  }
+  .identity-badge.manager { background: linear-gradient(135deg, #d29922, #e3b341); box-shadow: 0 0 8px rgba(210, 153, 34, 0.3); }
+  .identity-badge.platform { background: linear-gradient(135deg, #58a6ff, #79b8ff); box-shadow: 0 0 8px rgba(88, 166, 255, 0.3); }
+
+  /* Cards */
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    margin: 12px 16px;
+    padding: 16px;
+    transition: all 0.2s;
+  }
+  .card:active { transform: scale(0.98); }
+  .card-title { font-size: 15px; font-weight: 600; color: #f0f6fc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .card-title .icon { font-size: 18px; }
+
+  /* Buttons */
+  .btn {
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.2s; width: 100%;
+  }
+  .btn-primary { background: linear-gradient(135deg, #238636, #2ea043); color: #fff; box-shadow: 0 4px 12px rgba(35, 134, 54, 0.3); }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-gold { background: linear-gradient(135deg, #d29922, #e3b341); color: #1a1a1a; box-shadow: 0 4px 12px rgba(210, 153, 34, 0.3); }
+  .btn-blue { background: linear-gradient(135deg, #58a6ff, #79b8ff); color: #0d1117; box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3); }
+  .btn-outline { background: transparent; border: 1px solid #30363d; color: #c9d1d9; }
+  .btn-danger { background: linear-gradient(135deg, #da3633, #f85149); color: #fff; }
+  .btn-sm { padding: 8px 14px; font-size: 12px; width: auto; }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: rgba(13, 17, 23, 0.98);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid #30363d;
+    display: flex; justify-content: space-around;
+    padding: 8px 0 24px; z-index: 100;
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 12px; }
+  .nav-item .icon { font-size: 22px; opacity: 0.5; transition: all 0.2s; }
+  .nav-item .label { font-size: 10px; color: #8b949e; transition: all 0.2s; }
+  .nav-item.active .icon { opacity: 1; color: #238636; filter: drop-shadow(0 0 6px rgba(35, 134, 54, 0.5)); }
+  .nav-item.active .label { color: #238636; font-weight: 600; }
+  .nav-item.platform-active .icon { color: #58a6ff; filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.5)); }
+  .nav-item.platform-active .label { color: #58a6ff; }
+  .nav-item.manager-active .icon { color: #d29922; filter: drop-shadow(0 0 6px rgba(210, 153, 34, 0.5)); }
+  .nav-item.manager-active .label { color: #d29922; }
+
+  /* Tags */
+  .tag {
+    display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  }
+  .tag-green { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid rgba(35, 134, 54, 0.3); }
+  .tag-gold { background: rgba(210, 153, 34, 0.2); color: #e3b341; border: 1px solid rgba(210, 153, 34, 0.3); }
+  .tag-blue { background: rgba(88, 166, 255, 0.2); color: #79b8ff; border: 1px solid rgba(88, 166, 255, 0.3); }
+  .tag-red { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid rgba(218, 54, 51, 0.3); }
+  .tag-gray { background: rgba(139, 148, 158, 0.2); color: #8b949e; border: 1px solid rgba(139, 148, 158, 0.3); }
+
+  /* Form Elements */
+  input, select, textarea {
+    width: 100%; background: #0d1117; border: 1px solid #30363d;
+    border-radius: 10px; padding: 12px 14px; color: #c9d1d9;
+    font-size: 14px; outline: none; transition: all 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #58a6ff; box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1); }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 6px; font-weight: 500; }
+
+  /* Rank / List */
+  .list-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    background: #0d1117; border-radius: 10px; margin-bottom: 8px;
+    border: 1px solid #21262d; cursor: pointer; transition: all 0.2s;
+  }
+  .list-item:active { background: #161b22; }
+  .rank-num { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .rank-1 { background: linear-gradient(135deg, #FFD700, #FFA500); color: #1a1a1a; }
+  .rank-2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: #1a1a1a; }
+  .rank-3 { background: linear-gradient(135deg, #CD7F32, #B87333); color: #fff; }
+  .rank-other { background: #21262d; color: #8b949e; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #30363d, #484f58); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+  /* Progress */
+  .progress-bar { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px);
+    z-index: 200; display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-content {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 20px 20px 0 0; width: 100%; max-width: 430px;
+    padding: 24px 20px 40px; animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-title { font-size: 18px; font-weight: 700; color: #f0f6fc; margin-bottom: 20px; text-align: center; }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: #161b22; border: 1px solid #30363d; padding: 12px 20px;
+    border-radius: 10px; font-size: 13px; z-index: 300; opacity: 0; transition: all 0.3s;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4); pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: #238636; color: #3fb950; }
+  .toast.error { border-color: #da3633; color: #f85149; }
+
+  /* Specific Components */
+  .alert-bar {
+    background: linear-gradient(90deg, rgba(210, 153, 34, 0.15), rgba(210, 153, 34, 0.05));
+    border: 1px solid rgba(210, 153, 34, 0.3); border-radius: 10px;
+    padding: 12px 16px; margin: 12px 16px; display: flex; align-items: center; gap: 10px;
+  }
+  .alert-bar .icon { font-size: 20px; }
+  .alert-bar .text { flex: 1; }
+  .alert-bar .title { font-size: 13px; font-weight: 600; color: #e3b341; }
+  .alert-bar .desc { font-size: 11px; color: #d29922; opacity: 0.8; }
+
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px; }
+  .mode-card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+    padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s;
+  }
+  .mode-card:active { transform: scale(0.97); }
+  .mode-card .icon { font-size: 32px; margin-bottom: 8px; }
+  .mode-card .name { font-size: 14px; font-weight: 600; color: #f0f6fc; }
+  .mode-card .desc { font-size: 11px; color: #8b949e; margin-top: 4px; }
+  .mode-card .fee { font-size: 11px; color: #3fb950; margin-top: 4px; font-weight: 600; }
+  .mode-card.selected { border-color: #238636; box-shadow: 0 0 12px rgba(35, 134, 54, 0.2); }
+
+  .score-board {
+    display: flex; justify-content: center; align-items: center; gap: 24px; padding: 24px;
+  }
+  .score-player { text-align: center; }
+  .score-player .name { font-size: 14px; color: #8b949e; margin-bottom: 8px; }
+  .score-player .score {
+    font-size: 48px; font-weight: 800; color: #f0f6fc;
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #161b22; border: 2px solid #30363d;
+  }
+  .score-player .score.winning { border-color: #238636; box-shadow: 0 0 16px rgba(35, 134, 54, 0.3); color: #3fb950; }
+  .score-vs { font-size: 20px; color: #484f58; font-weight: 700; }
+
+  .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; }
+  .action-btn {
+    padding: 16px; border-radius: 12px; background: #161b22; border: 1px solid #30363d;
+    text-align: center; cursor: pointer; font-size: 14px; font-weight: 600; color: #f0f6fc;
+    transition: all 0.2s;
+  }
+  .action-btn:active { transform: scale(0.97); }
+  .action-btn.add { background: rgba(35, 134, 54, 0.1); border-color: rgba(35, 134, 54, 0.3); color: #3fb950; }
+  .action-btn.foul { background: rgba(210, 153, 34, 0.1); border-color: rgba(210, 153, 34, 0.3); color: #e3b341; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px; }
+  .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px; }
+  .stat-card .label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
+  .stat-card .value { font-size: 20px; font-weight: 700; color: #f0f6fc; }
+  .stat-card .change { font-size: 11px; margin-top: 4px; }
+  .stat-card .change.up { color: #3fb950; }
+  .stat-card .change.down { color: #f85149; }
+
+  .segment { display: flex; background: #0d1117; border-radius: 10px; padding: 4px; margin: 0 16px 16px; }
+  .segment-item { flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500; color: #8b949e; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+  .segment-item.active { background: #238636; color: #fff; }
+  .segment-item.blue-active { background: #58a6ff; color: #0d1117; }
+  .segment-item.gold-active { background: #d29922; color: #1a1a1a; }
+
+  .divider { height: 1px; background: #21262d; margin: 12px 16px; }
+
+  /* Login */
+  .login-page { padding: 60px 24px 24px; text-align: center; }
+  .login-logo { font-size: 64px; margin-bottom: 16px; }
+  .login-title { font-size: 24px; font-weight: 700; color: #f0f6fc; margin-bottom: 8px; }
+  .login-sub { font-size: 14px; color: #8b949e; margin-bottom: 40px; }
+  .login-form { text-align: left; }
+  .hall-select { display: flex; gap: 10px; overflow-x: auto; padding: 0 16px 16px; }
+  .hall-chip {
+    flex-shrink: 0; padding: 10px 18px; border-radius: 20px;
+    background: #161b22; border: 1px solid #30363d; font-size: 13px; color: #c9d1d9;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .hall-chip.selected { background: #238636; border-color: #238636; color: #fff; }
+  .hall-chip.gold-selected { background: #d29922; border-color: #d29922; color: #1a1a1a; }
+  .hall-chip.blue-selected { background: #58a6ff; border-color: #58a6ff; color: #0d1117; }
+
+  /* Switch Identity */
+  .switch-option {
+    display: flex; align-items: center; gap: 14px; padding: 16px;
+    background: #0d1117; border-radius: 12px; margin-bottom: 10px;
+    border: 1px solid #21262d; cursor: pointer; transition: all 0.2s;
+  }
+  .switch-option:active { background: #161b22; }
+  .switch-option .icon-box { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .switch-option .info { flex: 1; }
+  .switch-option .name { font-size: 15px; font-weight: 600; color: #f0f6fc; }
+  .switch-option .desc { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  .switch-option .check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #484f58; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .switch-option.active .check { background: #238636; border-color: #238636; color: #fff; }
+  .switch-option.manager-active .check { background: #d29922; border-color: #d29922; }
+  .switch-option.platform-active .check { background: #58a6ff; border-color: #58a6ff; }
+
+  /* Waiting list */
+  .waiting-card {
+    display: flex; align-items: center; gap: 12px; padding: 14px;
+    background: #0d1117; border-radius: 10px; border: 1px solid #21262d;
+    margin-bottom: 10px; cursor: pointer; transition: all 0.2s;
+  }
+  .waiting-card .avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #238636, #2ea043); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .waiting-card .info { flex: 1; }
+  .waiting-card .name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .waiting-card .name { font-size: 14px; font-weight: 600; color: #f0f6fc; }
+  .waiting-card .meta { font-size: 11px; color: #8b949e; }
+  .waiting-card .btn-challenge { padding: 6px 14px; border-radius: 8px; background: rgba(35, 134, 54, 0.15); border: 1px solid rgba(35, 134, 54, 0.3); color: #3fb950; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  /* Order popup */
+  .order-popup {
+    position: fixed; top: 60px; right: 16px; z-index: 150;
+    background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+    padding: 14px; width: 280px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    display: none; animation: fadeIn 0.3s ease;
+  }
+  .order-popup.show { display: block; }
+  .order-popup .title { font-size: 13px; font-weight: 700; color: #f0f6fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .order-popup .item { font-size: 12px; color: #8b949e; margin-bottom: 4px; }
+  .order-popup .amount { font-size: 16px; font-weight: 700; color: #e3b341; margin-top: 6px; }
+  .order-popup .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .order-popup .actions button { flex: 1; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; }
+  .order-popup .actions .confirm { background: #238636; color: #fff; }
+  .order-popup .actions .dismiss { background: #21262d; color: #8b949e; }
+
+  /* Scroll hide */
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px 20px; color: #484f58; }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+  .empty .text { font-size: 14px; }
+
+  /* Toggle */
+  .toggle { width: 48px; height: 26px; background: #30363d; border-radius: 13px; position: relative; cursor: pointer; transition: all 0.2s; }
+  .toggle::after { content: ''; position: absolute; width: 22px; height: 22px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: all 0.2s; }
+  .toggle.on { background: #238636; }
+  .toggle.on::after { left: 24px; }
+</style>
+</head>
+<body>
+<div class="app-container" id="app">
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Order Popup (Manager) -->
+<div class="order-popup" id="orderPopup">
+  <div class="title">🔔 新订单通知</div>
+  <div class="item">桌号：A区 3号桌</div>
+  <div class="item">商品：红牛 × 2、矿泉水 × 1</div>
+  <div class="item">时间：14:32</div>
+  <div class="amount">¥56.00</div>
+  <div class="actions">
+    <button class="confirm" onclick="confirmOrder()">确认接单</button>
+    <button class="dismiss" onclick="dismissOrder()">稍后处理</button>
+  </div>
+</div>
+
+<!-- ==================== LOGIN PAGE ==================== -->
+<div class="page active" id="page-login">
+  <div class="login-page">
+    <div class="login-logo">🎱</div>
+    <div class="login-title">杆法</div>
+    <div class="login-sub">专业台球社交平台 v7.0</div>
+
+    <div style="margin-bottom: 20px; text-align: left;">
+      <div class="form-label">选择球厅</div>
+      <div class="hall-select hide-scrollbar" id="hallSelect">
+        <div class="hall-chip selected" onclick="selectHall(this, 'player')">🎯 星耀台球俱乐部</div>
+        <div class="hall-chip" onclick="selectHall(this, 'manager')">👑 王者球厅(我是店长)</div>
+        <div class="hall-chip" onclick="selectHall(this, 'platform')">🏢 申请平台运营</div>
+      </div>
+    </div>
+
+    <div class="login-form" id="loginForm">
+      <div class="form-group">
+        <label class="form-label">手机号</label>
+        <input type="tel" placeholder="请输入手机号" value="138****8888" id="phoneInput">
+      </div>
+      <div class="form-group">
+        <label class="form-label">验证码</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" placeholder="请输入验证码" value="8888" style="flex: 1;">
+          <button class="btn btn-outline" style="width: auto;" onclick="sendCode()">获取验证码</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top: 24px;" onclick="doLogin()">登录</button>
+    </div>
+
+    <!-- Platform Apply Form (hidden by default) -->
+    <div class="login-form" id="platformApplyForm" style="display: none;">
+      <div class="form-group">
+        <label class="form-label">邀请码（如有）</label>
+        <input type="text" placeholder="输入平台运营邀请码">
+      </div>
+      <div style="text-align: center; margin: 16px 0; color: #484f58; font-size: 13px;">— 或 —</div>
+      <div class="form-group">
+        <label class="form-label">真实姓名</label>
+        <input type="text" placeholder="请输入真实姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label">联系电话</label>
+        <input type="tel" placeholder="请输入联系电话">
+      </div>
+      <div class="form-group">
+        <label class="form-label">申请理由</label>
+        <textarea rows="3" placeholder="请简述您申请平台运营的原因和相关经验"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">上传资质证明</label>
+        <div style="border: 1px dashed #30363d; border-radius: 10px; padding: 24px; text-align: center; color: #484f58; font-size: 13px; cursor: pointer;">
+          📎 点击上传营业执照或相关证明
+        </div>
+      </div>
+      <button class="btn btn-blue" style="margin-top: 16px;" onclick="submitPlatformApply()">提交申请</button>
+      <button class="btn btn-outline" style="margin-top: 10px;" onclick="showLoginForm()">返回登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== IDENTITY SWITCH MODAL ==================== -->
+<div class="modal-overlay" id="switchModal" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-title">切换身份</div>
+    <div class="switch-option active" onclick="switchIdentity('player')">
+      <div class="icon-box" style="background: rgba(35,134,54,0.2);">🎱</div>
+      <div class="info">
+        <div class="name">玩家</div>
+        <div class="desc">对战、赛事、积分、商城</div>
+      </div>
+      <div class="check">✓</div>
+    </div>
+    <div class="switch-option" id="switchManager" onclick="switchIdentity('manager')">
+      <div class="icon-box" style="background: rgba(210,153,34,0.2);">👑</div>
+      <div class="info">
+        <div class="name">店长</div>
+        <div class="desc">数据管理、订单处理、设置</div>
+      </div>
+      <div class="check"></div>
+    </div>
+    <div class="switch-option" id="switchPlatform" onclick="switchIdentity('platform')">
+      <div class="icon-box" style="background: rgba(88,166,255,0.2);">🏢</div>
+      <div class="info">
+        <div class="name">平台运营</div>
+        <div class="desc">总览、审核、财务、风控</div>
+      </div>
+      <div class="check"></div>
+    </div>
+    <button class="btn btn-outline" style="margin-top: 20px;" onclick="closeSwitchModal()">取消</button>
+  </div>
+</div>
+
+<!-- ==================== PLAYER HOME ==================== -->
+<div class="page" id="page-player-home">
+  <div class="header">
+    <div>
+      <div class="header-title">星耀台球俱乐部</div>
+      <div class="header-sub">北京市朝阳区建国路88号</div>
+    </div>
+    <div class="identity-badge" onclick="openSwitchModal()">🎱 玩家 <span style="font-size: 10px;">▼</span></div>
+  </div>
+
+  <!-- Alert: Waiting for match -->
+  <div class="alert-bar" onclick="goToPage('page-player-match')">
+    <div class="icon">🔥</div>
+    <div class="text">
+      <div class="title">3 人正在等待切磋</div>
+      <div class="desc">点击快速应战，赢取积分提升段位</div>
+    </div>
+    <div style="font-size: 20px; color: #e3b341;">›</div>
+  </div>
+
+  <!-- Reservation / Queue -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📅</span> 预约 / 排队</div>
+    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+      <div style="flex: 1; background: #0d1117; border-radius: 10px; padding: 14px; text-align: center; border: 1px solid #21262d;">
+        <div style="font-size: 24px; font-weight: 700; color: #58a6ff;">5</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 4px;">当前排队</div>
+        <div style="font-size: 11px; color: #3fb950; margin-top: 2px;">预计 15 分钟</div>
+      </div>
+      <div style="flex: 1; background: #0d1117; border-radius: 10px; padding: 14px; text-align: center; border: 1px solid #21262d;">
+        <div style="font-size: 24px; font-weight: 700; color: #d29922;">3</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 4px;">可预约时段</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 2px;">今天 18:00-22:00</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn btn-blue" onclick="showToast('预约功能开发中', 'success')">立即预约</button>
+      <button class="btn btn-outline" onclick="showToast('已加入排队队列', 'success')">现场排队</button>
+    </div>
+  </div>
+
+  <!-- Rank & Progress -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🏆</span> 我的段位</div>
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #58a6ff, #79b8ff); display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 16px rgba(88, 166, 255, 0.3);">💎</div>
+      <div style="flex: 1;">
+        <div style="font-size: 18px; font-weight: 700; color: #58a6ff;">钻石 II</div>
+        <div style="font-size: 12px; color: #8b949e; margin-top: 2px;">积分 2,845 / 3,000</div>
+        <div class="progress-bar"><div class="progress-fill" style="width: 78%; background: linear-gradient(90deg, #58a6ff, #79b8ff);"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Store Rankings -->
+  <div class="card">
+    <div class="card-title" style="justify-content: space-between;">
+      <span><span class="icon">📊</span> 店内排名</span>
+      <span style="font-size: 12px; color: #8b949e; cursor: pointer;" onclick="showToast('查看完整榜单', 'success')">查看全部 ›</span>
+    </div>
+    <div class="list-item" onclick="challengePlayer('阿杰')">
+      <div class="rank-num rank-1">1</div>
+      <div class="avatar">🧑</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; font-weight: 600; color: #f0f6fc;">阿杰</div>
+        <div style="font-size: 11px; color: #8b949e;">王者 I · 3,850 积分</div>
+      </div>
+      <button class="btn btn-sm btn-outline" style="font-size: 11px;">PK</button>
+    </div>
+    <div class="list-item" onclick="challengePlayer('老K')">
+      <div class="rank-num rank-2">2</div>
+      <div class="avatar">👨</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; font-weight: 600; color: #f0f6fc;">老K</div>
+        <div style="font-size: 11px; color: #8b949e;">星耀 III · 3,420 积分</div>
+      </div>
+      <button class="btn btn-sm btn-outline" style="font-size: 11px;">PK</button>
+    </div>
+    <div class="list-item" onclick="challengePlayer('小球神')">
+      <div class="rank-num rank-3">3</div>
+      <div class="avatar">🧒</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; font-weight: 600; color: #f0f6fc;">小球神</div>
+        <div style="font-size: 11px; color: #8b949e;">钻石 I · 2,980 积分</div>
+      </div>
+      <button class="btn btn-sm btn-outline" style="font-size: 11px;">PK</button>
+    </div>
+    <div class="list-item" onclick="challengePlayer('路人甲')">
+      <div class="rank-num rank-other">4</div>
+      <div class="avatar">👤</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; font-weight: 600; color: #f0f6fc;">路人甲</div>
+        <div style="font-size: 11px; color: #8b949e;">铂金 II · 2,560 积分</div>
+      </div>
+      <button class="btn btn-sm btn-outline" style="font-size: 11px;">PK</button>
+    </div>
+  </div>
+
+  <!-- Waiting List -->
+  <div class="card">
+    <div class="card-title"><span class="icon">⏳</span> 等待切磋</div>
+    <div class="waiting-card" onclick="acceptChallenge('阿杰')">
+      <div class="avatar">🧑</div>
+      <div class="info">
+        <div class="name-row">
+          <span class="name">阿杰</span>
+          <span class="tag tag-gold">王者 I</span>
+        </div>
+        <div class="meta">等待 3 分钟 · 中式八球 · 抢7</div>
+      </div>
+      <button class="btn-challenge">应战</button>
+    </div>
+    <div class="waiting-card" onclick="acceptChallenge('小球神')">
+      <div class="avatar" style="background: linear-gradient(135deg, #58a6ff, #79b8ff);">🧒</div>
+      <div class="info">
+        <div class="name-row">
+          <span class="name">小球神</span>
+          <span class="tag tag-blue">钻石 I</span>
+        </div>
+        <div class="meta">等待 8 分钟 · 斯诺克 · 单局</div>
+      </div>
+      <button class="btn-challenge">应战</button>
+    </div>
+    <div class="waiting-card" onclick="acceptChallenge('路人甲')">
+      <div class="avatar" style="background: linear-gradient(135deg, #d29922, #e3b341);">👤</div>
+      <div class="info">
+        <div class="name-row">
+          <span class="name">路人甲</span>
+          <span class="tag tag-gold">铂金 II</span>
+        </div>
+        <div class="meta">等待 12 分钟 · 中式八球 · 抢5</div>
+      </div>
+      <button class="btn-challenge">应战</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLAYER MATCH ==================== -->
+<div class="page" id="page-player-match">
+  <div class="header">
+    <div class="header-title" onclick="goToPage('page-player-home')">‹ 对战大厅</div>
+    <div class="identity-badge" onclick="openSwitchModal()">🎱 玩家</div>
+  </div>
+
+  <div class="segment" style="margin-top: 12px;">
+    <div class="segment-item active" onclick="selectMatchTab(this, 0)">快速匹配</div>
+    <div class="segment-item" onclick="selectMatchTab(this, 1)">PK挑战</div>
+    <div class="segment-item" onclick="selectMatchTab(this, 2)">抢局模式</div>
+    <div class="segment-item" onclick="selectMatchTab(this, 3)">发起赛事</div>
+  </div>
+
+  <!-- Mode Grid -->
+  <div class="mode-grid" style="margin-bottom: 16px;">
+    <div class="mode-card selected" onclick="selectMode(this)">
+      <div class="icon">⚡</div>
+      <div class="name">快速匹配</div>
+      <div class="desc">系统自动匹配对手</div>
+      <div class="fee">无抽成</div>
+    </div>
+    <div class="mode-card" onclick="selectMode(this)">
+      <div class="icon">⚔️</div>
+      <div class="name">PK挑战</div>
+      <div class="desc">输者拜师买饮料</div>
+      <div class="fee">茶水费 10%</div>
+    </div>
+    <div class="mode-card" onclick="selectMode(this)">
+      <div class="icon">🎲</div>
+      <div class="name">抢局模式</div>
+      <div class="desc">纯娱乐，不排名</div>
+      <div class="fee">0% 抽成</div>
+    </div>
+    <div class="mode-card" onclick="selectMode(this)">
+      <div class="icon">🏆</div>
+      <div class="name">发起赛事</div>
+      <div class="desc">四方赛事，大奖</div>
+      <div class="fee">报名费 20%</div>
+    </div>
+  </div>
+
+  <!-- Match Info -->
+  <div class="card">
+    <div class="card-title">🎯 匹配设置</div>
+    <div class="form-group">
+      <label class="form-label">比赛规则</label>
+      <select><option>中式八球</option><option>斯诺克</option><option>九球</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">局数</label>
+      <select><option>抢5</option><option>抢7</option><option>抢9</option><option>单局</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">让球设置</label>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <span class="tag tag-green" style="cursor: pointer;">自动让球</span>
+        <span class="tag tag-gray" style="cursor: pointer;">平打</span>
+        <span class="tag tag-gray" style="cursor: pointer;">让后一</span>
+        <span class="tag tag-gray" style="cursor: pointer;">让后二</span>
+        <span class="tag tag-gray" style="cursor: pointer;">让后三</span>
+      </div>
+    </div>
+    <div style="background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.2); border-radius: 8px; padding: 10px; font-size: 12px; color: #79b8ff; margin-top: 8px;">
+      💡 自动让球：根据段位差自动计算让球规则（钻石II vs 铂金I = 让后二）
+    </div>
+  </div>
+
+  <!-- Fee Info -->
+  <div class="card" style="border-color: rgba(210, 153, 34, 0.3);">
+    <div style="font-size: 13px; color: #d29922; font-weight: 600; margin-bottom: 8px;">💰 抽成说明</div>
+    <div style="font-size: 12px; color: #8b949e; line-height: 1.6;">
+      PK 拜师茶水：平台 5% + 球厅 5% = 10%<br>
+      赛事报名费：平台 10% + 球厅 10% = 20%<br>
+      抢局模式：0% 抽成（仅收取台费）<br>
+      广告收入：平台 70% + 球厅 30%
+    </div>
+  </div>
+
+  <button class="btn btn-primary" style="margin: 0 16px 16px;" onclick="startMatch()">开始匹配</button>
+</div>
+
+<!-- ==================== PLAYER GAME ==================== -->
+<div class="page" id="page-player-game">
+  <div class="header">
+    <div class="header-title" onclick="goToPage('page-player-match')">‹ 对战中</div>
+    <div class="tag tag-blue">中式八球 · 抢7</div>
+  </div>
+
+  <!-- Handicap Info -->
+  <div style="margin: 12px 16px; background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.2); border-radius: 10px; padding: 12px; text-align: center;">
+    <div style="font-size: 13px; color: #79b8ff; font-weight: 600;">🎯 自动让球提示</div>
+    <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">钻石 II vs 铂金 I · 段位差1级+1小段 → <span style="color: #e3b341; font-weight: 600;">自动让后二</span></div>
+  </div>
+
+  <!-- Score Board -->
+  <div class="score-board">
+    <div class="score-player">
+      <div class="name">我 (钻石II)</div>
+      <div class="score" id="myScore">4</div>
+    </div>
+    <div class="score-vs">VS</div>
+    <div class="score-player">
+      <div class="name">阿杰 (铂金I)</div>
+      <div class="score winning" id="oppScore">5</div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-grid">
+    <div class="action-btn add" onclick="addScore('me')">我 +1</div>
+    <div class="action-btn add" onclick="addScore('opp')" style="background: rgba(210, 153, 34, 0.1); border-color: rgba(210, 153, 34, 0.3); color: #e3b341;">阿杰 +1</div>
+    <div class="action-btn foul" onclick="showToast('已记录犯规', 'success')">犯规</div>
+    <div class="action-btn" onclick="showToast('自由球', 'success')" style="background: rgba(88, 166, 255, 0.1); border-color: rgba(88, 166, 255, 0.3); color: #79b8ff;">自由球</div>
+    <div class="action-btn" onclick="showToast('已暂停计时', 'success')" style="background: rgba(139, 148, 158, 0.1); border-color: rgba(139, 148, 158, 0.3); color: #8b949e;">暂停</div>
+    <div class="action-btn" onclick="showToast('确认结束对局？', 'error')" style="background: rgba(218, 54, 51, 0.1); border-color: rgba(218, 54, 51, 0.3); color: #f85149;">结束</div>
+  </div>
+
+  <!-- Order during game -->
+  <div class="card" style="margin-top: 16px;">
+    <div class="card-title">🛒 快捷点单</div>
+    <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px;">
+      <div style="flex-shrink: 0; background: #0d1117; border-radius: 10px; padding: 10px 14px; text-align: center; border: 1px solid #21262d; cursor: pointer;" onclick="quickOrder('红牛', 8)">
+        <div style="font-size: 20px;">🥤</div>
+        <div style="font-size: 11px; color: #c9d1d9; margin-top: 4px;">红牛</div>
+        <div style="font-size: 12px; color: #e3b341; font-weight: 600;">¥8</div>
+      </div>
+      <div style="flex-shrink: 0; background: #0d1117; border-radius: 10px; padding: 10px 14px; text-align: center; border: 1px solid #21262d; cursor: pointer;" onclick="quickOrder('矿泉水', 3)">
+        <div style="font-size: 20px;">💧</div>
+        <div style="font-size: 11px; color: #c9d1d9; margin-top: 4px;">矿泉水</div>
+        <div style="font-size: 12px; color: #e3b341; font-weight: 600;">¥3</div>
+      </div>
+      <div style="flex-shrink: 0; background: #0d1117; border-radius: 10px; padding: 10px 14px; text-align: center; border: 1px solid #21262d; cursor: pointer;" onclick="quickOrder('槟榔', 15)">
+        <div style="font-size: 20px;">🍬</div>
+        <div style="font-size: 11px; color: #c9d1d9; margin-top: 4px;">槟榔</div>
+        <div style="font-size: 12px; color: #e3b341; font-weight: 600;">¥15</div>
+      </div>
+      <div style="flex-shrink: 0; background: #0d1117; border-radius: 10px; padding: 10px 14px; text-align: center; border: 1px solid #21262d; cursor: pointer;" onclick="quickOrder('泡面', 12)">
+        <div style="font-size: 20px;">🍜</div>
+        <div style="font-size: 11px; color: #c9d1d9; margin-top: 4px;">泡面</div>
+        <div style="font-size: 12px; color: #e3b341; font-weight: 600;">¥12</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button class="btn btn-primary btn-sm" style="flex: 1;" onclick="showToast('下单成功，记账模式', 'success')">记账</button>
+      <button class="btn btn-blue btn-sm" style="flex: 1;" onclick="showToast('正在调起支付...', 'success')">在线支付</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLAYER EVENTS ==================== -->
+<div class="page" id="page-player-events">
+  <div class="header">
+    <div class="header-title">赛事中心</div>
+    <div class="identity-badge" onclick="openSwitchModal()">🎱 玩家</div>
+  </div>
+
+  <div class="segment" style="margin-top: 12px;">
+    <div class="segment-item active" onclick="selectEventTab(this)">进行中</div>
+    <div class="segment-item" onclick="selectEventTab(this)">即将开始</div>
+    <div class="segment-item" onclick="selectEventTab(this)">我的赛事</div>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div>
+        <div style="font-size: 16px; font-weight: 700; color: #f0f6fc;">🎱 周末争霸赛</div>
+        <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">星耀台球俱乐部 · 本周六 14:00</div>
+      </div>
+      <span class="tag tag-green">报名中</span>
+    </div>
+    <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+      <div><span style="font-size: 18px; font-weight: 700; color: #f0f6fc;">16</span><span style="font-size: 11px; color: #8b949e;">/32人</span></div>
+      <div><span style="font-size: 18px; font-weight: 700; color: #e3b341;">¥500</span><span style="font-size: 11px; color: #8b949e;"> 奖金池</span></div>
+      <div><span style="font-size: 18px; font-weight: 700; color: #58a6ff;">¥50</span><span style="font-size: 11px; color: #8b949e;"> 报名费</span></div>
+    </div>
+    <div style="font-size: 11px; color: #484f58; margin-bottom: 12px;">报名费抽成：平台10% + 球厅10% = 20%</div>
+    <button class="btn btn-gold" onclick="showToast('报名成功！', 'success')">立即报名</button>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div>
+        <div style="font-size: 16px; font-weight: 700; color: #f0f6fc;">🏆 月度大师赛</div>
+        <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">王者球厅 · 下月1日 10:00</div>
+      </div>
+      <span class="tag tag-blue">预热中</span>
+    </div>
+    <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+      <div><span style="font-size: 18px; font-weight: 700; color: #f0f6fc;">8</span><span style="font-size: 11px; color: #8b949e;">/64人</span></div>
+      <div><span style="font-size: 18px; font-weight: 700; color: #e3b341;">¥2,000</span><span style="font-size: 11px; color: #8b949e;"> 奖金池</span></div>
+      <div><span style="font-size: 18px; font-weight: 700; color: #58a6ff;">¥100</span><span style="font-size: 11px; color: #8b949e;"> 报名费</span></div>
+    </div>
+    <button class="btn btn-outline" onclick="showToast('已设置提醒', 'success')">提醒我可报名</button>
+  </div>
+</div>
+
+<!-- ==================== PLAYER SHOP ==================== -->
+<div class="page" id="page-player-shop">
+  <div class="header">
+    <div class="header-title">商城</div>
+    <div class="identity-badge" onclick="openSwitchModal()">🎱 玩家</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🪙 我的积分</div>
+    <div style="font-size: 32px; font-weight: 800; color: #e3b341;">1,280</div>
+    <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">可用于兑换商品或抵扣消费</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🛍️ 积分兑换</div>
+    <div class="list-item" style="margin: 0 0 8px 0;" onclick="showToast('兑换成功！', 'success')">
+      <div style="font-size: 28px;">🥤</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; font-weight: 600; color: #f0f6fc;">红牛能量饮料</div>
+        <div style="font-size: 11px; color: #8b949e;">250ml 罐装</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 14px; font-weight: 700; color: #e3b341;">200 积分</div>
+        <div style="font-size: 11px; color: #484f58; text-decoration: line-through;">¥8</div>
+      </div>
+    </div>
+    <div class="list-item" style="margin: 0 0 8px 0;" onclick="showToast('兑换成功！', 'success')">
+      <div style="font-size: 28px;">🎱</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; font-weight: 600; color: #f0f6fc;">台球手套</div>
+        <div style="font-size: 11px; color: #8b949e;">专业三指手套</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 14px; font-weight: 700; color: #e3b341;">500 积分</div>
+        <div style="font-size: 11px; color: #484f58; text-decoration: line-through;">¥35</div>
+      </div>
+    </div>
+    <div class="list-item" style="margin: 0;" onclick="showToast('兑换成功！', 'success')">
+      <div style="font-size: 28px;">🧢</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; font-weight: 600; color: #f0f6fc;">定制球帽</div>
+        <div style="font-size: 11px; color: #8b949e;">杆法APP联名款</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 14px; font-weight: 700; color: #e3b341;">800 积分</div>
+        <div style="font-size: 11px; color: #484f58; text-decoration: line-through;">¥58</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLAYER PROFILE ==================== -->
+<div class="page" id="page-player-profile">
+  <div class="header">
+    <div class="header-title">我的</div>
+    <div class="identity-badge" onclick="openSwitchModal()">🎱 玩家 <span style="font-size: 10px;">▼</span></div>
+  </div>
+
+  <div style="padding: 20px 16px; text-align: center;">
+    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #238636, #2ea043); margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 0 20px rgba(35, 134, 54, 0.3);">🎱</div>
+    <div style="font-size: 20px; font-weight: 700; color: #f0f6fc; margin-top: 12px;">台球小王子</div>
+    <div style="margin-top: 6px;"><span class="tag tag-blue">钻石 II</span></div>
+    <div style="font-size: 13px; color: #8b949e; margin-top: 8px;">ID: 138****8888</div>
+  </div>
+
+  <div class="stat-grid" style="margin-bottom: 16px;">
+    <div class="stat-card">
+      <div class="label">总场次</div>
+      <div class="value">128</div>
+      <div class="change up">+3 本周</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">胜率</div>
+      <div class="value">68%</div>
+      <div class="change up">+2%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">积分</div>
+      <div class="value">2,845</div>
+      <div class="change up">+120</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">排名</div>
+      <div class="value">#4</div>
+      <div class="change down">-1</div>
+    </div>
+  </div>
+
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="list-item" style="border-radius: 0; border: none; border-bottom: 1px solid #21262d;" onclick="showToast('我的战绩', 'success')">
+      <div style="font-size: 20px;">📊</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">我的战绩</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+    <div class="list-item" style="border-radius: 0; border: none; border-bottom: 1px solid #21262d;" onclick="showToast('段位历史', 'success')">
+      <div style="font-size: 20px;">🏆</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">段位历史</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+    <div class="list-item" style="border-radius: 0; border: none; border-bottom: 1px solid #21262d;" onclick="showToast('消费记录', 'success')">
+      <div style="font-size: 20px;">💳</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">消费记录</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+    <div class="list-item" style="border-radius: 0; border: none;" onclick="showToast('设置', 'success')">
+      <div style="font-size: 20px;">⚙️</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">设置</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MANAGER HOME ==================== -->
+<div class="page" id="page-manager-home">
+  <div class="header">
+    <div>
+      <div class="header-title">星耀台球俱乐部</div>
+      <div class="header-sub">店长控制台</div>
+    </div>
+    <div class="identity-badge manager" onclick="openSwitchModal()">👑 店长 <span style="font-size: 10px;">▼</span></div>
+  </div>
+
+  <!-- Order popup trigger area -->
+  <div style="padding: 0 16px; margin-bottom: 12px;">
+    <button class="btn btn-gold" onclick="showOrderPopup()">🔔 模拟新订单通知</button>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">今日营收</div>
+      <div class="value" style="color: #e3b341;">¥2,856</div>
+      <div class="change up">+12% 较昨日</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">台费收入</div>
+      <div class="value">¥1,920</div>
+      <div class="change up">+8%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">商品销售</div>
+      <div class="value">¥636</div>
+      <div class="change up">+25%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">抽成收入</div>
+      <div class="value">¥300</div>
+      <div class="change up">+5%</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 实时桌台状态</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+      <div style="background: #0d1117; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #238636;">
+        <div style="font-size: 11px; color: #3fb950;">A01 使用中</div>
+        <div style="font-size: 18px; margin-top: 4px;">🎱</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 4px;">1h 23m</div>
+      </div>
+      <div style="background: #0d1117; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #238636;">
+        <div style="font-size: 11px; color: #3fb950;">A02 使用中</div>
+        <div style="font-size: 18px; margin-top: 4px;">🎱</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 4px;">45m</div>
+      </div>
+      <div style="background: #0d1117; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #30363d;">
+        <div style="font-size: 11px; color: #8b949e;">A03 空闲</div>
+        <div style="font-size: 18px; margin-top: 4px; opacity: 0.3;">🎱</div>
+        <div style="font-size: 11px; color: #3fb950; margin-top: 4px;">¥38/h</div>
+      </div>
+      <div style="background: #0d1117; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #30363d;">
+        <div style="font-size: 11px; color: #8b949e;">B01 空闲</div>
+        <div style="font-size: 18px; margin-top: 4px; opacity: 0.3;">🎱</div>
+        <div style="font-size: 11px; color: #3fb950; margin-top: 4px;">¥38/h</div>
+      </div>
+      <div style="background: #0d1117; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #d29922;">
+        <div style="font-size: 11px; color: #e3b341;">B02 预约</div>
+        <div style="font-size: 18px; margin-top: 4px;">📅</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 4px;">18:00</div>
+      </div>
+      <div style="background: #0d1117; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #238636;">
+        <div style="font-size: 11px; color: #3fb950;">B03 使用中</div>
+        <div style="font-size: 18px; margin-top: 4px;">🎱</div>
+        <div style="font-size: 11px; color: #8b949e; margin-top: 4px;">2h 10m</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🛒 最近订单</div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div style="font-size: 20px;">🥤</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">A03 桌 · 红牛×2, 矿泉水×1</div>
+        <div style="font-size: 11px; color: #8b949e;">14:32 · 在线支付</div>
+      </div>
+      <div style="font-size: 14px; font-weight: 700; color: #e3b341;">¥56</div>
+    </div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div style="font-size: 20px;">🍜</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">A01 桌 · 泡面×2</div>
+        <div style="font-size: 11px; color: #8b949e;">14:15 · 记账</div>
+      </div>
+      <div style="font-size: 14px; font-weight: 700; color: #e3b341;">¥24</div>
+    </div>
+    <div class="list-item" style="margin: 0;">
+      <div style="font-size: 20px;">🎱</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">B03 桌 · 台费续时</div>
+        <div style="font-size: 11px; color: #8b949e;">13:50 · 在线支付</div>
+      </div>
+      <div style="font-size: 14px; font-weight: 700; color: #e3b341;">¥38</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MANAGER DATA ==================== -->
+<div class="page" id="page-manager-data">
+  <div class="header">
+    <div class="header-title">数据中心</div>
+    <div class="identity-badge manager" onclick="openSwitchModal()">👑 店长</div>
+  </div>
+
+  <div class="segment" style="margin-top: 12px;">
+    <div class="segment-item gold-active" onclick="selectDataTab(this)">今日</div>
+    <div class="segment-item" onclick="selectDataTab(this)">本周</div>
+    <div class="segment-item" onclick="selectDataTab(this)">本月</div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">营业收入</div>
+      <div class="value" style="color: #e3b341;">¥2,856</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">订单数</div>
+      <div class="value">42</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">在线支付</div>
+      <div class="value">¥1,680</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">记账金额</div>
+      <div class="value">¥1,176</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📈 收入构成</div>
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: #c9d1d9;">台费收入</span>
+        <span style="color: #f0f6fc; font-weight: 600;">¥1,920 (67%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: 67%; background: #58a6ff;"></div></div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: #c9d1d9;">商品销售</span>
+        <span style="color: #f0f6fc; font-weight: 600;">¥636 (22%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: 22%; background: #238636;"></div></div>
+    </div>
+    <div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: #c9d1d9;">平台抽成</span>
+        <span style="color: #f0f6fc; font-weight: 600;">¥300 (11%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: 11%; background: #d29922;"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏆 店内活跃玩家 TOP5</div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div class="rank-num rank-1">1</div>
+      <div class="avatar">🧑</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">阿杰</div>
+        <div style="font-size: 11px; color: #8b949e;">本周消费 ¥380</div>
+      </div>
+      <div class="tag tag-green">12场</div>
+    </div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div class="rank-num rank-2">2</div>
+      <div class="avatar">👨</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">老K</div>
+        <div style="font-size: 11px; color: #8b949e;">本周消费 ¥296</div>
+      </div>
+      <div class="tag tag-green">9场</div>
+    </div>
+    <div class="list-item" style="margin: 0;">
+      <div class="rank-num rank-3">3</div>
+      <div class="avatar">🧒</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">小球神</div>
+        <div style="font-size: 11px; color: #8b949e;">本周消费 ¥245</div>
+      </div>
+      <div class="tag tag-green">8场</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MANAGER SETTINGS ==================== -->
+<div class="page" id="page-manager-settings">
+  <div class="header">
+    <div class="header-title">商家设置</div>
+    <div class="identity-badge manager" onclick="openSwitchModal()">👑 店长</div>
+  </div>
+
+  <!-- Handicap Rules -->
+  <div class="card">
+    <div class="card-title">🎯 让球规则设置</div>
+    <div style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">根据段位差距自动设置让球规则</div>
+
+    <div class="form-group">
+      <label class="form-label">差 1 级</label>
+      <select><option>让后一</option><option>让后二</option><option>平打</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">差 2 级</label>
+      <select><option>让后二</option><option>让后一</option><option>让后三</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">差 3 级</label>
+      <select><option>让后三</option><option>让后二</option><option>禁止对战</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">差 1 小段</label>
+      <select><option>让后一</option><option>平打</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">差 ≥4 级</label>
+      <select><option>禁止对战</option><option>让后三+让前一</option></select>
+    </div>
+    <div style="background: rgba(210, 153, 34, 0.1); border: 1px solid rgba(210, 153, 34, 0.2); border-radius: 8px; padding: 10px; font-size: 12px; color: #e3b341;">
+      💡 示例：钻石II vs 铂金I = 差1级+1小段 → 让后二
+    </div>
+  </div>
+
+  <!-- Payment Settings -->
+  <div class="card">
+    <div class="card-title">💳 支付方式设置</div>
+    <div class="list-item" style="margin: 0 0 8px 0; border: none; padding: 12px 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">在线支付</div>
+        <div style="font-size: 11px; color: #8b949e;">微信 / 支付宝</div>
+      </div>
+      <div class="toggle on" onclick="toggleSwitch(this)"></div>
+    </div>
+    <div class="list-item" style="margin: 0; border: none; padding: 12px 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">记账后结账</div>
+        <div style="font-size: 11px; color: #8b949e;">会员登记，离店统一结算</div>
+      </div>
+      <div class="toggle on" onclick="toggleSwitch(this)"></div>
+    </div>
+    <div style="margin-top: 12px;">
+      <label class="form-label">默认支付方式</label>
+      <select><option>在线支付</option><option>记账后结账</option></select>
+    </div>
+  </div>
+
+  <!-- Commission Display (Read Only) -->
+  <div class="card" style="border-color: rgba(88, 166, 255, 0.3);">
+    <div class="card-title">📋 抽成比例（固定）</div>
+    <div style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">以下比例为平台统一设定，不可修改</div>
+    <div style="font-size: 13px; line-height: 2; color: #c9d1d9;">
+      <div>PK 拜师茶水：平台 5% + 球厅 5% = <span style="color: #e3b341; font-weight: 600;">10%</span></div>
+      <div>赛事报名费：平台 10% + 球厅 10% = <span style="color: #e3b341; font-weight: 600;">20%</span></div>
+      <div>抢局模式：<span style="color: #3fb950; font-weight: 600;">0% 抽成</span></div>
+      <div>广告收入：平台 70% + 球厅 30%</div>
+    </div>
+  </div>
+
+  <!-- Product Management -->
+  <div class="card">
+    <div class="card-title">🛍️ 商品管理</div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div style="font-size: 24px;">🥤</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">红牛</div>
+        <div style="font-size: 11px; color: #8b949e;">¥8 · 200积分</div>
+      </div>
+      <span class="tag tag-green">上架</span>
+    </div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div style="font-size: 24px;">💧</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">矿泉水</div>
+        <div style="font-size: 11px; color: #8b949e;">¥3 · 80积分</div>
+      </div>
+      <span class="tag tag-green">上架</span>
+    </div>
+    <button class="btn btn-outline btn-sm" style="margin-top: 8px;" onclick="showToast('添加商品', 'success')">+ 添加商品</button>
+  </div>
+
+  <button class="btn btn-primary" style="margin: 0 16px 16px;" onclick="showToast('设置已保存', 'success')">保存设置</button>
+</div>
+
+<!-- ==================== MANAGER PROFILE ==================== -->
+<div class="page" id="page-manager-profile">
+  <div class="header">
+    <div class="header-title">我的</div>
+    <div class="identity-badge manager" onclick="openSwitchModal()">👑 店长 <span style="font-size: 10px;">▼</span></div>
+  </div>
+
+  <div style="padding: 20px 16px; text-align: center;">
+    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #d29922, #e3b341); margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 0 20px rgba(210, 153, 34, 0.3);">👑</div>
+    <div style="font-size: 20px; font-weight: 700; color: #f0f6fc; margin-top: 12px;">张店长</div>
+    <div style="margin-top: 6px;"><span class="tag tag-gold">店长</span></div>
+    <div style="font-size: 13px; color: #8b949e; margin-top: 8px;">星耀台球俱乐部</div>
+  </div>
+
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="list-item" style="border-radius: 0; border: none; border-bottom: 1px solid #21262d;" onclick="goToPage('page-manager-home')">
+      <div style="font-size: 20px;">🏠</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">回到商家首页</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+    <div class="list-item" style="border-radius: 0; border: none; border-bottom: 1px solid #21262d;" onclick="showToast('切换为玩家身份', 'success'); switchIdentity('player')">
+      <div style="font-size: 20px;">🎱</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">切换为玩家身份</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+    <div class="list-item" style="border-radius: 0; border: none;" onclick="showToast('退出登录', 'error'); location.reload()">
+      <div style="font-size: 20px;">🚪</div>
+      <div style="flex: 1; font-size: 14px; color: #f85149;">退出登录</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLATFORM OVERVIEW ==================== -->
+<div class="page" id="page-platform-overview">
+  <div class="header">
+    <div>
+      <div class="header-title">平台总览</div>
+      <div class="header-sub">运营数据中心</div>
+    </div>
+    <div class="identity-badge platform" onclick="openSwitchModal()">🏢 运营 <span style="font-size: 10px;">▼</span></div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">注册用户</div>
+      <div class="value" style="color: #58a6ff;">12,580</div>
+      <div class="change up">+128 今日</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">活跃球厅</div>
+      <div class="value">86</div>
+      <div class="change up">+3 本周</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">日活用户</div>
+      <div class="value">3,240</div>
+      <div class="change up">+5%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">月流水</div>
+      <div class="value" style="color: #e3b341;">¥586万</div>
+      <div class="change up">+12%</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💰 平台收入构成</div>
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: #c9d1d9;">赛事抽成</span>
+        <span style="color: #f0f6fc; font-weight: 600;">¥42万 (36%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: 36%; background: #58a6ff;"></div></div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: #c9d1d9;">PK 茶水</span>
+        <span style="color: #f0f6fc; font-weight: 600;">¥28万 (24%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: 24%; background: #238636;"></div></div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: #c9d1d9;">广告收入</span>
+        <span style="color: #f0f6fc; font-weight: 600;">¥35万 (30%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: 30%; background: #d29922;"></div></div>
+    </div>
+    <div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: #c9d1d9;">会员服务</span>
+        <span style="color: #f0f6fc; font-weight: 600;">¥12万 (10%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width: 10%; background: #a371f7;"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🚨 风控预警</div>
+    <div class="list-item" style="margin: 0 0 8px 0; border-color: rgba(218, 54, 51, 0.3);">
+      <div style="font-size: 20px;">⚠️</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f85149;">连续赢场异常</div>
+        <div style="font-size: 11px; color: #8b949e;">用户 "阿杰" 连续获胜 23 场</div>
+      </div>
+      <span class="tag tag-red">审查</span>
+    </div>
+    <div class="list-item" style="margin: 0; border-color: rgba(210, 153, 34, 0.3);">
+      <div style="font-size: 20px;">⚠️</div>
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #e3b341;">流水突降</div>
+        <div style="font-size: 11px; color: #8b949e;">"王者球厅" 今日流水下降 45%</div>
+      </div>
+      <span class="tag tag-gold">关注</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLATFORM HALLS ==================== -->
+<div class="page" id="page-platform-halls">
+  <div class="header">
+    <div class="header-title">球厅管理</div>
+    <div class="identity-badge platform" onclick="openSwitchModal()">🏢 运营</div>
+  </div>
+
+  <div class="segment" style="margin-top: 12px;">
+    <div class="segment-item blue-active" onclick="selectHallTab(this)">全部</div>
+    <div class="segment-item" onclick="selectHallTab(this)">正常</div>
+    <div class="segment-item" onclick="selectHallTab(this)">审核中</div>
+    <div class="segment-item" onclick="selectHallTab(this)">警告</div>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+      <div>
+        <div style="font-size: 16px; font-weight: 700; color: #f0f6fc;">🎯 星耀台球俱乐部</div>
+        <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">北京市朝阳区 · 12张球桌</div>
+      </div>
+      <span class="tag tag-green">正常</span>
+    </div>
+    <div style="display: flex; gap: 16px; margin-bottom: 10px;">
+      <div style="font-size: 13px; color: #c9d1d9;">月营收 <span style="font-weight: 700; color: #e3b341;">¥8.5万</span></div>
+      <div style="font-size: 13px; color: #c9d1d9;">活跃会员 <span style="font-weight: 700; color: #58a6ff;">342</span></div>
+    </div>
+    <div style="font-size: 12px; color: #484f58;">平台抽成：赛事10% + PK茶水5% + 广告70%</div>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+      <div>
+        <div style="font-size: 16px; font-weight: 700; color: #f0f6fc;">👑 王者球厅</div>
+        <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">上海市浦东新区 · 8张球桌</div>
+      </div>
+      <span class="tag tag-gold">警告</span>
+    </div>
+    <div style="display: flex; gap: 16px; margin-bottom: 10px;">
+      <div style="font-size: 13px; color: #c9d1d9;">月营收 <span style="font-weight: 700; color: #e3b341;">¥3.2万</span></div>
+      <div style="font-size: 13px; color: #c9d1d9;">活跃会员 <span style="font-weight: 700; color: #58a6ff;">128</span></div>
+    </div>
+    <div style="font-size: 12px; color: #f85149;">⚠️ 今日流水下降 45%，已触发风控预警</div>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+      <div>
+        <div style="font-size: 16px; font-weight: 700; color: #f0f6fc;">🎱 新星台球室</div>
+        <div style="font-size: 12px; color: #8b949e; margin-top: 4px;">广州市天河区 · 6张球桌</div>
+      </div>
+      <span class="tag tag-blue">审核中</span>
+    </div>
+    <div style="font-size: 12px; color: #8b949e;">入驻申请提交于 2024-01-15</div>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button class="btn btn-primary btn-sm" style="flex: 1;" onclick="showToast('已通过审核', 'success')">通过</button>
+      <button class="btn btn-outline btn-sm" style="flex: 1;" onclick="showToast('已拒绝申请', 'error')">拒绝</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLATFORM AUDIT ==================== -->
+<div class="page" id="page-platform-audit">
+  <div class="header">
+    <div class="header-title">审核中心</div>
+    <div class="identity-badge platform" onclick="openSwitchModal()">🏢 运营</div>
+  </div>
+
+  <div class="segment" style="margin-top: 12px;">
+    <div class="segment-item blue-active" onclick="selectAuditTab(this)">球厅入驻</div>
+    <div class="segment-item" onclick="selectAuditTab(this)">赛事发布</div>
+    <div class="segment-item" onclick="selectAuditTab(this)">段位申诉</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏢 待审核球厅（3）</div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">🎱 新星台球室</div>
+        <div style="font-size: 11px; color: #8b949e;">广州天河 · 6张球桌 · 1-15 申请</div>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-sm btn-primary" style="padding: 6px 12px;" onclick="showToast('已通过', 'success')">通过</button>
+        <button class="btn btn-sm btn-outline" style="padding: 6px 12px;" onclick="showToast('已拒绝', 'error')">拒绝</button>
+      </div>
+    </div>
+    <div class="list-item" style="margin: 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">🎯 精准台球俱乐部</div>
+        <div style="font-size: 11px; color: #8b949e;">深圳南山 · 10张球桌 · 1-14 申请</div>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-sm btn-primary" style="padding: 6px 12px;" onclick="showToast('已通过', 'success')">通过</button>
+        <button class="btn btn-sm btn-outline" style="padding: 6px 12px;" onclick="showToast('已拒绝', 'error')">拒绝</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏆 待审核赛事（2）</div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">周末争霸赛</div>
+        <div style="font-size: 11px; color: #8b949e;">星耀俱乐部 · 奖金¥500 · 1-16 申请</div>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-sm btn-primary" style="padding: 6px 12px;" onclick="showToast('已通过', 'success')">通过</button>
+        <button class="btn btn-sm btn-outline" style="padding: 6px 12px;" onclick="showToast('已拒绝', 'error')">拒绝</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📢 段位申诉（1）</div>
+    <div class="list-item" style="margin: 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">路人甲 申诉段位</div>
+        <div style="font-size: 11px; color: #8b949e;">认为当前铂金II评级过低 · 1-15 提交</div>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-sm btn-primary" style="padding: 6px 12px;" onclick="showToast('申诉通过', 'success')">通过</button>
+        <button class="btn btn-sm btn-outline" style="padding: 6px 12px;" onclick="showToast('申诉驳回', 'error')">驳回</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLATFORM FINANCE ==================== -->
+<div class="page" id="page-platform-finance">
+  <div class="header">
+    <div class="header-title">财务中心</div>
+    <div class="identity-badge platform" onclick="openSwitchModal()">🏢 运营</div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">本月平台收入</div>
+      <div class="value" style="color: #e3b341;">¥58.6万</div>
+      <div class="change up">+12%</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">待结算</div>
+      <div class="value">¥12.4万</div>
+      <div class="change up">5家球厅</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 平台抽成设置</div>
+    <div style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">以下为平台统一抽成标准，所有球厅同步执行</div>
+    <div style="font-size: 13px; line-height: 2.2; color: #c9d1d9;">
+      <div style="display: flex; justify-content: space-between;">
+        <span>PK 拜师茶水</span>
+        <span>平台 <span style="color: #58a6ff; font-weight: 700;">5%</span> + 球厅 <span style="color: #238636; font-weight: 700;">5%</span> = 10%</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>赛事报名费</span>
+        <span>平台 <span style="color: #58a6ff; font-weight: 700;">10%</span> + 球厅 <span style="color: #238636; font-weight: 700;">10%</span> = 20%</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>抢局模式</span>
+        <span style="color: #3fb950; font-weight: 700;">0% 抽成</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>广告收入</span>
+        <span>平台 <span style="color: #58a6ff; font-weight: 700;">70%</span> + 球厅 <span style="color: #238636; font-weight: 700;">30%</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💰 球厅结算</div>
+    <div class="list-item" style="margin: 0 0 8px 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">🎯 星耀台球俱乐部</div>
+        <div style="font-size: 11px; color: #8b949e;">结算周期：1.1-1.15</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 14px; font-weight: 700; color: #e3b341;">¥4.25万</div>
+        <div style="font-size: 11px; color: #3fb950;">待打款</div>
+      </div>
+    </div>
+    <div class="list-item" style="margin: 0;">
+      <div style="flex: 1;">
+        <div style="font-size: 14px; color: #f0f6fc;">👑 王者球厅</div>
+        <div style="font-size: 11px; color: #8b949e;">结算周期：1.1-1.15</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 14px; font-weight: 700; color: #e3b341;">¥1.68万</div>
+        <div style="font-size: 11px; color: #3fb950;">待打款</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLATFORM PROFILE ==================== -->
+<div class="page" id="page-platform-profile">
+  <div class="header">
+    <div class="header-title">我的</div>
+    <div class="identity-badge platform" onclick="openSwitchModal()">🏢 运营 <span style="font-size: 10px;">▼</span></div>
+  </div>
+
+  <div style="padding: 20px 16px; text-align: center;">
+    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #58a6ff, #79b8ff); margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 36px; box-shadow: 0 0 20px rgba(88, 166, 255, 0.3);">🏢</div>
+    <div style="font-size: 20px; font-weight: 700; color: #f0f6fc; margin-top: 12px;">平台管理员</div>
+    <div style="margin-top: 6px;"><span class="tag tag-blue">平台运营</span></div>
+  </div>
+
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="list-item" style="border-radius: 0; border: none; border-bottom: 1px solid #21262d;" onclick="showToast('账号安全', 'success')">
+      <div style="font-size: 20px;">🔐</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">账号安全</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+    <div class="list-item" style="border-radius: 0; border: none; border-bottom: 1px solid #21262d;" onclick="showToast('操作日志', 'success')">
+      <div style="font-size: 20px;">📋</div>
+      <div style="flex: 1; font-size: 14px; color: #f0f6fc;">操作日志</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+    <div class="list-item" style="border-radius: 0; border: none;" onclick="showToast('退出登录', 'error'); location.reload()">
+      <div style="font-size: 20px;">🚪</div>
+      <div style="flex: 1; font-size: 14px; color: #f85149;">退出登录</div>
+      <div style="color: #484f58;">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== BOTTOM NAV ==================== -->
+<div class="bottom-nav" id="playerNav">
+  <div class="nav-item active" onclick="goToPage('page-player-home')">
+    <div class="icon">🏠</div>
+    <div class="label">首页</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-player-match')">
+    <div class="icon">⚔️</div>
+    <div class="label">对战</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-player-events')">
+    <div class="icon">🏆</div>
+    <div class="label">赛事</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-player-shop')">
+    <div class="icon">🛒</div>
+    <div class="label">商城</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-player-profile')">
+    <div class="icon">👤</div>
+    <div class="label">我的</div>
+  </div>
+</div>
+
+<div class="bottom-nav" id="managerNav" style="display: none;">
+  <div class="nav-item manager-active" onclick="goToPage('page-manager-home')">
+    <div class="icon">🏠</div>
+    <div class="label">首页</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-manager-data')">
+    <div class="icon">📊</div>
+    <div class="label">数据</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-manager-settings')">
+    <div class="icon">⚙️</div>
+    <div class="label">设置</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-manager-profile')">
+    <div class="icon">👤</div>
+    <div class="label">我的</div>
+  </div>
+</div>
+
+<div class="bottom-nav" id="platformNav" style="display: none;">
+  <div class="nav-item platform-active" onclick="goToPage('page-platform-overview')">
+    <div class="icon">📈</div>
+    <div class="label">总览</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-platform-halls')">
+    <div class="icon">🎯</div>
+    <div class="label">球厅</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-platform-audit')">
+    <div class="icon">📋</div>
+    <div class="label">审核</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-platform-finance')">
+    <div class="icon">💰</div>
+    <div class="label">财务</div>
+  </div>
+  <div class="nav-item" onclick="goToPage('page-platform-profile')">
+    <div class="icon">👤</div>
+    <div class="label">我的</div>
+  </div>
+</div>
+
+<script>
+  let currentIdentity = 'player';
+  let currentHallRole = 'player';
+  // ========== Supabase 联网配置 ==========
+  // ⚠️ 下面的 URL 和 Key 需要替换成你自己的！
+  // 去 https://supabase.com 注册项目后获取
+  const SUPABASE_URL = 'https://gurhzkejrfnlosgnxwoe.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_fgd2BdXrwfMa-DHzfgHa5g_Ync2BsHW';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+  let currentMatchId = null;
+
+  // 辅助：把段位转成数字等级，用于计算让球
+  function rankToLevel(rank) {
+    const tiers = ['青铜','白银','黄金','铂金','钻石','星耀','王者'];
+    const m = rank.match(/(.*?)([I|II|III])/);
+    if (!m) return 0;
+    const tier = m[1], sub = m[2];
+    const subVal = sub === 'I' ? 2 : sub === 'II' ? 1 : 0;
+    return tiers.indexOf(tier) * 3 + subVal;
+  }
+
+  // ========== 联网核心函数 ==========
+
+  async function doLogin() {
+    const phone = document.getElementById('phoneInput').value.trim();
+    if (!phone) { showToast('请输入手机号', 'error'); return; }
+    
+    showToast('正在登录...', 'success');
+    
+    // 1. 查询或创建用户
+    let { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('phone', phone)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      showToast('网络异常：' + error.message, 'error');
+      console.error(error);
+      return;
+    }
+    
+    // 2. 用户不存在则创建
+    if (!user) {
+      const nickname = '玩家' + phone.slice(-4);
+      const insert = await supabase
+        .from('users')
+        .insert({ phone, nickname, rank: '青铜 III', points: 0 })
+        .select();
+      if (insert.error) { showToast('注册失败', 'error'); return; }
+      user = insert.data[0];
+      showToast('新用户注册成功', 'success');
+    } else {
+      showToast('欢迎回来，' + user.nickname, 'success');
+    }
+    
+    currentUser = user;
+    localStorage.setItem('user_id', user.id);
+    localStorage.setItem('user_phone', user.phone);
+    localStorage.setItem('user_name', user.nickname);
+    
+    // 3. 根据身份进入不同页面
+    if (currentHallRole === 'manager') {
+      currentIdentity = 'manager';
+      document.getElementById('page-login').classList.remove('active');
+      document.getElementById('page-manager-home').classList.add('active');
+      document.getElementById('playerNav').style.display = 'none';
+      document.getElementById('managerNav').style.display = 'flex';
+      document.getElementById('platformNav').style.display = 'none';
+      loadManagerOrders();
+    } else if (currentHallRole === 'platform') {
+      currentIdentity = 'platform';
+      document.getElementById('page-login').classList.remove('active');
+      document.getElementById('page-platform-overview').classList.add('active');
+      document.getElementById('playerNav').style.display = 'none';
+      document.getElementById('managerNav').style.display = 'none';
+      document.getElementById('platformNav').style.display = 'flex';
+    } else {
+      currentIdentity = 'player';
+      document.getElementById('page-login').classList.remove('active');
+      document.getElementById('page-player-home').classList.add('active');
+      document.getElementById('playerNav').style.display = 'flex';
+      document.getElementById('managerNav').style.display = 'none';
+      document.getElementById('platformNav').style.display = 'none';
+      loadLeaderboard();
+      loadWaitingQueue();
+    }
+  }
+
+  async function loadLeaderboard() {
+    const { data, error } = await supabase
+      .from('users')
+      .select('nickname, rank, points, wins, losses')
+      .order('points', { ascending: false })
+      .limit(10);
+    if (data) {
+      console.log('排行榜:', data);
+      // 这里可以把 data 渲染到页面，替换静态数据
+      // 为简化演示，保留原静态UI，真实数据在 console 可见
+    }
+  }
+
+  async function loadWaitingQueue() {
+    const { data, error } = await supabase
+      .from('waiting_queue')
+      .select('*')
+      .eq('status', 'waiting')
+      .order('created_at', { ascending: true });
+    if (data) console.log('等待切磋:', data);
+  }
+
+  async function joinWaitingQueue(rule, games) {
+    if (!currentUser) { showToast('请先登录', 'error'); return; }
+    const { data, error } = await supabase
+      .from('waiting_queue')
+      .insert({
+        user_id: currentUser.id,
+        user_name: currentUser.nickname,
+        user_rank: currentUser.rank,
+        rule, games,
+        status: 'waiting'
+      })
+      .select();
+    if (data) showToast('已加入等待队列', 'success');
+  }
+
+  async function createMatchOnline(playerBId, playerBName, mode) {
+    if (!currentUser) { showToast('请先登录', 'error'); return; }
+    const { data, error } = await supabase
+      .from('matches')
+      .insert({
+        player_a_id: currentUser.id,
+        player_a_name: currentUser.nickname,
+        player_b_id: playerBId,
+        player_b_name: playerBName,
+        mode,
+        status: 'ongoing'
+      })
+      .select();
+    if (data) {
+      currentMatchId = data[0].id;
+      showToast('对局创建成功', 'success');
+    }
+  }
+
+  async function updateScoreOnline(scoreA, scoreB) {
+    if (!currentMatchId) return;
+    await supabase.from('matches')
+      .update({ score_a: scoreA, score_b: scoreB })
+      .eq('id', currentMatchId);
+  }
+
+  async function finishMatch(winnerId) {
+    if (!currentMatchId) return;
+    await supabase.from('matches')
+      .update({ status: 'finished', winner_id: winnerId, finished_at: new Date() })
+      .eq('id', currentMatchId);
+    currentMatchId = null;
+  }
+
+  async function createOrderOnline(tableId, items, amount, payMethod) {
+    if (!currentUser) { showToast('请先登录', 'error'); return; }
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        user_id: currentUser.id,
+        table_id: tableId,
+        items: items,
+        amount: amount,
+        pay_method: payMethod,
+        status: payMethod === 'ledger' ? 'unpaid' : 'paid',
+        hall_id: 'xingyao'
+      })
+      .select();
+    if (data) {
+      showToast('订单已创建：' + (payMethod === 'ledger' ? '记账成功' : '请完成支付'), 'success');
+      // 如果是店长端，这里会触发实时推送
+    }
+  }
+
+  async function loadManagerOrders() {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, users(nickname)')
+      .eq('hall_id', 'xingyao')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (data) console.log('商家订单:', data);
+  }
+
+  // 实时监听新订单（店长端）
+  function subscribeOrders() {
+    supabase.channel('orders')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
+        console.log('新订单:', payload.new);
+        showToast('🔔 新订单：桌号' + payload.new.table_id + ' ¥' + payload.new.amount, 'success');
+      })
+      .subscribe();
+  }
+  // 页面加载后自动订阅（如果是店长端）
+  setTimeout(() => { if (currentIdentity === 'manager') subscribeOrders(); }, 2000);
+
+  // 覆盖原函数：对战计分自动同步
+  const originalAddScore = addScore;
+  addScore = function(who) {
+    originalAddScore(who);
+    if (currentMatchId) {
+      const sA = parseInt(document.getElementById('myScore').textContent);
+      const sB = parseInt(document.getElementById('oppScore').textContent);
+      updateScoreOnline(sA, sB);
+    }
+  };
+
+
+  function goToPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function selectHall(el, role) {
+    document.querySelectorAll('.hall-chip').forEach(c => {
+      c.classList.remove('selected', 'gold-selected', 'blue-selected');
+    });
+    currentHallRole = role;
+    if (role === 'player') el.classList.add('selected');
+    else if (role === 'manager') el.classList.add('gold-selected');
+    else if (role === 'platform') el.classList.add('blue-selected');
+
+    if (role === 'platform') {
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('platformApplyForm').style.display = 'block';
+    } else {
+      document.getElementById('loginForm').style.display = 'block';
+      document.getElementById('platformApplyForm').style.display = 'none';
+    }
+  }
+
+  function showLoginForm() {
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('platformApplyForm').style.display = 'none';
+    document.querySelectorAll('.hall-chip').forEach(c => c.classList.remove('selected', 'gold-selected', 'blue-selected'));
+    document.querySelector('.hall-chip').classList.add('selected');
+    currentHallRole = 'player';
+  }
+
+  function doLogin() {
+    if (currentHallRole === 'manager') {
+      currentIdentity = 'manager';
+      document.getElementById('page-login').classList.remove('active');
+      document.getElementById('page-manager-home').classList.add('active');
+      document.getElementById('playerNav').style.display = 'none';
+      document.getElementById('managerNav').style.display = 'flex';
+      document.getElementById('platformNav').style.display = 'none';
+      showToast('店长登录成功', 'success');
+    } else {
+      currentIdentity = 'player';
+      document.getElementById('page-login').classList.remove('active');
+      document.getElementById('page-player-home').classList.add('active');
+      document.getElementById('playerNav').style.display = 'flex';
+      document.getElementById('managerNav').style.display = 'none';
+      document.getElementById('platformNav').style.display = 'none';
+      showToast('登录成功', 'success');
+    }
+  }
+
+  function submitPlatformApply() {
+    showToast('申请已提交，平台将在3个工作日内审核', 'success');
+    setTimeout(() => {
+      currentIdentity = 'platform';
+      document.getElementById('page-login').classList.remove('active');
+      document.getElementById('page-platform-overview').classList.add('active');
+      document.getElementById('playerNav').style.display = 'none';
+      document.getElementById('managerNav').style.display = 'none';
+      document.getElementById('platformNav').style.display = 'flex';
+      showToast('平台运营审核通过，欢迎登录', 'success');
+    }, 2000);
+  }
+
+  function openSwitchModal() {
+    document.getElementById('switchModal').classList.add('active');
+    updateSwitchUI();
+  }
+
+  function closeSwitchModal() {
+    document.getElementById('switchModal').classList.remove('active');
+  }
+
+  function closeModal(e) {
+    if (e.target === e.currentTarget) closeSwitchModal();
+  }
+
+  function updateSwitchUI() {
+    document.querySelectorAll('.switch-option').forEach(opt => {
+      opt.classList.remove('active', 'manager-active', 'platform-active');
+      opt.querySelector('.check').textContent = '';
+    });
+    if (currentIdentity === 'player') {
+      document.querySelector('.switch-option').classList.add('active');
+      document.querySelector('.switch-option .check').textContent = '✓';
+    } else if (currentIdentity === 'manager') {
+      document.getElementById('switchManager').classList.add('manager-active');
+      document.getElementById('switchManager').querySelector('.check').textContent = '✓';
+    } else if (currentIdentity === 'platform') {
+      document.getElementById('switchPlatform').classList.add('platform-active');
+      document.getElementById('switchPlatform').querySelector('.check').textContent = '✓';
+    }
+  }
+
+  function switchIdentity(role) {
+    currentIdentity = role;
+    closeSwitchModal();
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active', 'manager-active', 'platform-active'));
+
+    if (role === 'player') {
+      document.getElementById('page-player-home').classList.add('active');
+      document.getElementById('playerNav').style.display = 'flex';
+      document.getElementById('managerNav').style.display = 'none';
+      document.getElementById('platformNav').style.display = 'none';
+      showToast('已切换为玩家身份', 'success');
+    } else if (role === 'manager') {
+      document.getElementById('page-manager-home').classList.add('active');
+      document.getElementById('playerNav').style.display = 'none';
+      document.getElementById('managerNav').style.display = 'flex';
+      document.getElementById('platformNav').style.display = 'none';
+      showToast('已切换为店长身份', 'success');
+    } else if (role === 'platform') {
+      document.getElementById('page-platform-overview').classList.add('active');
+      document.getElementById('playerNav').style.display = 'none';
+      document.getElementById('managerNav').style.display = 'none';
+      document.getElementById('platformNav').style.display = 'flex';
+      showToast('已切换为平台运营', 'success');
+    }
+  }
+
+  function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + (type || '');
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  function sendCode() {
+    showToast('验证码已发送', 'success');
+  }
+
+  function selectMatchTab(el, idx) {
+    el.parentElement.querySelectorAll('.segment-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function selectMode(el) {
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function startMatch() {
+    goToPage('page-player-game');
+    showToast('匹配成功！开始对局', 'success');
+  }
+
+  function addScore(who) {
+    if (who === 'me') {
+      const el = document.getElementById('myScore');
+      el.textContent = parseInt(el.textContent) + 1;
+    } else {
+      const el = document.getElementById('oppScore');
+      el.textContent = parseInt(el.textContent) + 1;
+    }
+  }
+
+  function quickOrder(name, price) {
+    showToast('已添加 ' + name + ' ¥' + price, 'success');
+  }
+
+  function challengePlayer(name) {
+    showToast('已向 ' + name + ' 发起PK挑战', 'success');
+    setTimeout(() => goToPage('page-player-game'), 500);
+  }
+
+  function acceptChallenge(name) {
+    showToast('接受 ' + name + ' 的挑战', 'success');
+    setTimeout(() => goToPage('page-player-game'), 500);
+  }
+
+  function selectEventTab(el) {
+    el.parentElement.querySelectorAll('.segment-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function selectDataTab(el) {
+    el.parentElement.querySelectorAll('.segment-item').forEach(i => i.classList.remove('gold-active'));
+    el.classList.add('gold-active');
+  }
+
+  function selectHallTab(el) {
+    el.parentElement.querySelectorAll('.segment-item').forEach(i => i.classList.remove('blue-active'));
+    el.classList.add('blue-active');
+  }
+
+  function selectAuditTab(el) {
+    el.parentElement.querySelectorAll('.segment-item').forEach(i => i.classList.remove('blue-active'));
+    el.classList.add('blue-active');
+  }
+
+  function toggleSwitch(el) {
+    el.classList.toggle('on');
+  }
+
+  function showOrderPopup() {
+    document.getElementById('orderPopup').classList.add('show');
+  }
+
+  function confirmOrder() {
+    document.getElementById('orderPopup').classList.remove('show');
+    showToast('订单已确认', 'success');
+  }
+
+  function dismissOrder() {
+    document.getElementById('orderPopup').classList.remove('show');
+  }
+</script>
+
+</div>
+</body>
+</html>
